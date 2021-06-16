@@ -1,0 +1,34 @@
+.app {
+  height: 100vh;
+}
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 4.5vh;
+}
+
+.header h1 {
+  font-size: 3vh;
+  line-height: 1.5;
+  padding: 0 0.75vh;
+  margin: 0;
+}
+
+.run {
+  position: fixed;
+  bottom: 3vh;
+  right: 3vh;
+  z-index: 100;
+}
+
+.footer {
+  position: fixed !important;
+  width: 100%;
+  bottom: 0;
+  left: 0;
+  font-size: 1.5vh;
+  line-height: 1;
+  text-align: center;
+}
