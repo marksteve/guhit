@@ -14,7 +14,7 @@ export function run(script, context, onSuccess, onError) {
 //    const {results, error} = await asyncRun(script, context);
 // Instead of:
 //    run(script, context, successCallback, errorCallback);
-export function asyncRun(script, context) {
+export function asyncRun(script, context): { results: any; error: Error } {
   return new Promise(function (onSuccess, onError) {
     run(script, context, onSuccess, onError)
   })
