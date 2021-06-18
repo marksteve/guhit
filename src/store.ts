@@ -1,9 +1,14 @@
 import { configureStore, createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import indentString from 'indent-string'
+import { customAlphabet } from 'nanoid'
+import { lowercase, numbers } from 'nanoid-dictionary'
 import { getOutgoers } from 'react-flow-renderer'
 import { asyncRun } from './py-worker'
 
+const elementId = customAlphabet(lowercase + numbers, 10)
+
 async function* processFlow(src, elements) {
-  let df = `df_${src.id}`
+  let prevValue = `rv_${src.id}`
   yield src
   let curr = src
   while (true) {
@@ -12,17 +17,19 @@ async function* processFlow(src, elements) {
       break
     }
     curr = outgoers[0]
-    const currDf = `df_${curr.id}`
+    const currValue = `rv_${curr.id}`
     const { code } = curr.data
     const { results, error } = await asyncRun(
       `
+def step_${curr.id}(value):
+${indentString(code, 4)}
+
+${currValue} = step_${curr.id}(${prevValue}.copy())
+
 import json
-df = ${df}
-${code}
-${currDf} = df
 json.dumps({
-  "columns": list(df.columns),
-  "head": df.head().to_dict(orient="records"),
+  "columns": list(${currValue}.columns),
+  "head": ${currValue}.head().to_dict(orient="records"),
 })
 `,
       {}
@@ -33,8 +40,10 @@ json.dumps({
         ...curr,
         data: { ...curr.data, error },
       }
+      // FIXME: Should show error for rest
       continue
     }
+    prevValue = currValue
     const { columns, head } = JSON.parse(results)
     yield {
       ...curr,
@@ -47,8 +56,9 @@ export const runFlow = createAsyncThunk(
   'elements/runFlow',
   async (_, thunkAPI) => {
     const { elements } = thunkAPI.getState() as any
+    const src = elements.find((e) => e.type === 'localFile')
     const processedElements: Record<string, any> = {}
-    for await (const element of processFlow(elements[0], elements)) {
+    for await (const element of processFlow(src, elements)) {
       processedElements[element.id] = element
     }
     return processedElements
@@ -57,27 +67,27 @@ export const runFlow = createAsyncThunk(
 
 const elementsSlice = createSlice({
   name: 'elements',
-  initialState: [
-    {
-      id: '1',
-      type: 'localFile',
-      data: {},
-      position: { x: 32, y: 128 },
-    },
-    {
-      id: '2',
-      type: 'pandas',
-      data: {
-        name: 'Convert to PHP',
-        code: `
-df["CostPHP"] = df["CostUSD"] * 50
-        `.trim(),
-      },
-      position: { x: 512, y: 128 },
-    },
-    { id: 'e1-2', source: '1', target: '2' },
-  ],
+  initialState: [],
   reducers: {
+    nodeAdded(state, action) {
+      const { type, data } = action.payload
+      const id = elementId()
+      state.push({
+        id,
+        type,
+        data,
+        position: { x: 128, y: 128 },
+      })
+    },
+    edgeAdded(state, action) {
+      const { source, target } = action.payload
+      const id = elementId()
+      state.push({
+        id,
+        source,
+        target,
+      })
+    },
     elementDataUpdated(state, action) {
       const { id, data } = action.payload
       const i = state.findIndex((node) => node.id === id)
@@ -92,7 +102,8 @@ df["CostPHP"] = df["CostUSD"] * 50
   },
 })
 
-export const { elementDataUpdated } = elementsSlice.actions
+export const { nodeAdded, edgeAdded, elementDataUpdated } =
+  elementsSlice.actions
 
 export const store = configureStore({
   reducer: {

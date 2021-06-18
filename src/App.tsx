@@ -1,34 +1,19 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import ReactFlow, {
   Background,
   BackgroundVariant,
-  Controls
+  Controls,
 } from 'react-flow-renderer'
 import { useDispatch, useSelector } from 'react-redux'
 import { GlobalStyles } from 'twin.macro'
-import LocalFile from './components/LocalFile'
-import Pandas from './components/Pandas'
-import { asyncRun } from './py-worker'
+import Sidebar from './components/Sidebar'
+import CustomCode from './nodes/CustomCode'
+import LocalFile from './nodes/LocalFile'
 import { runFlow } from './store'
 
-
 export default function App() {
-  const [version, setVersion] = useState('Loading...')
   const elements = useSelector((state) => state.elements)
   const dispatch = useDispatch()
-
-  useEffect(() => {
-    asyncRun(`
-      import sys
-      sys.version
-    `, {}).then(({ results, error }) => {
-      if (error) {
-        console.error(error)
-      } else {
-        setVersion(results)
-      }
-    })
-  }, [])
 
   function run() {
     dispatch(runFlow())
@@ -50,6 +35,7 @@ export default function App() {
           <Background variant={BackgroundVariant.Dots} gap={16} />
           <Controls />
         </ReactFlow>
+        <Sidebar />
         <div tw="fixed bottom-0 right-0 m-5 z-10">
           <button
             tw="bg-blue-500 hover:bg-blue-600 text-white p-2"
@@ -58,15 +44,12 @@ export default function App() {
             Run
           </button>
         </div>
-        <footer tw="fixed inset-x-0 bottom-0 h-5 text-center text-sm">
-          Python version: {version}
-        </footer>
       </div>
     </>
   )
 }
 
 const nodeTypes = {
-  pandas: Pandas,
+  customCode: CustomCode,
   localFile: LocalFile,
 }
